@@ -11,6 +11,11 @@
 #define file_name "test.txt"
 #define link_file  "links.csv"
 #define text_file "text.csv"
+#define video_file "video.csv"
+#define parttern_link_1 "<a\\s+href=\"([^\"]+)\"[^>]*>" //Lay tat ca link
+#define parttern_text_1 "<h3[^>]*><a[^>]*>([^<]*)</a></h3>" //text cho trang dantri.com.vn
+#define parttern_link_2 "<h3[^>]*><a\\s+href=\"([^\"]+)\"[^>]*></h3>" //Lay link trong youtube.com
+#define parttern_text_2 "<h3[^>]*><a[^>]*>([^<]*)</a></h3>" //text cho trang youtube.com
 #define MAX_URL_LENGTH 2048
 
 int checkHostnameOrIp(char *info)
@@ -70,7 +75,7 @@ void get_hostname(char *ip)
     
 }
 
-void write2File(const char* url){
+void writeHTMLFile(const char* url){
     CURL *curlHandle = curl_easy_init();
     curl_easy_setopt(curlHandle, CURLOPT_URL, url);
     FILE *file = fopen(file_name, "w+");
@@ -87,15 +92,14 @@ char* getFullUrl(const char* url){
     return fullUrl;
 }
 
-void extract_hyperlinks(const char *html_file_name, char ***links,char*** text, int *num_texts, int *num_links)
-{
-    char *html = NULL;
+char *readHTMLFile(const char *html_file_name){
+     char *html = NULL;
     size_t html_size = 0;
     FILE *file = fopen(html_file_name, "r");
     if (file == NULL)
     {
         perror("Error opening HTML file");
-        return;
+        return NULL;
     }
     char buffer[1024];
     while (fgets(buffer, sizeof(buffer), file))
@@ -107,17 +111,19 @@ void extract_hyperlinks(const char *html_file_name, char ***links,char*** text, 
             perror("Memory allocation error");
             free(html);
             fclose(file);
-            return;
+            return NULL;
         }
         html = new_html;
         strcpy(html + html_size, buffer);
         html_size += len;
     }
     fclose(file);
+    return html;
+}
+
+void extract_hyperlinks(char *html, char ***links, int *num_links){
     regex_t hl_regex_links;
-    regex_t hl_regex_text;
-    regcomp(&hl_regex_links, "<a\\s+href=\"([^\"]+)\"[^>]*>", REG_ICASE | REG_EXTENDED);
-    regcomp(&hl_regex_text, "<p>.*<a[^>]*>([^<]+)</a>.*</p>", REG_ICASE | REG_EXTENDED);
+    regcomp(&hl_regex_links, parttern_link_1 , REG_ICASE | REG_EXTENDED);
     regmatch_t pmatch[2];
     *num_links = 0;
     char **link_list = NULL;
@@ -146,7 +152,15 @@ void extract_hyperlinks(const char *html_file_name, char ***links,char*** text, 
         link_list[(*num_links)++] = link;
         cursor += end;
     }
-    cursor = html;
+    *links = link_list;
+    regfree(&hl_regex_links);
+}
+
+void extract_hypertexts(char *html, char*** text, int *num_texts){
+    regex_t hl_regex_text;
+    regcomp(&hl_regex_text, parttern_text_1, REG_ICASE | REG_EXTENDED);
+    regmatch_t pmatch[2];
+    const char *cursor = html;
     char** text_list = NULL;
     *num_texts = 0;
     while (regexec(&hl_regex_text, cursor, 2, pmatch, 0) == 0)
@@ -174,35 +188,42 @@ void extract_hyperlinks(const char *html_file_name, char ***links,char*** text, 
         cursor += end;
     }
     *text = text_list;
-    *links = link_list;
     free(html);
-    regfree(&hl_regex_links);
 }
+
 int main(int argc, char *argv[])
 {
     if(argc <2){
         printf("Usage: %s <url>\n", argv[0]);
         return 1;
     }
-    char *fullUrl = getFullUrl(argv[1]);
-    write2File(fullUrl);
-    char **final_links = NULL;
-    int final_count = 0;
-    char **final_texts = NULL;
-    int final_count_text = 0;
-    extract_hyperlinks(file_name, &final_links, &final_texts,&final_count_text, &final_count);
-    //write to file
-    FILE *file = fopen(link_file, "w+");
-    for (int i = 0; i < final_count; i++)
-    {
-        fprintf(file, "%s\n", final_links[i]);
+    char *temp = argv[1];
+    char *fullUrl = getFullUrl(temp);
+    if(checkHostnameOrIp(temp) == 0){
+        get_ip(temp);
+        writeHTMLFile(fullUrl);
+        char **final_links = NULL;
+        int final_count_links = 0;
+        char **final_texts = NULL;
+        int final_count_texts = 0;
+        extract_hyperlinks(readHTMLFile(file_name), &final_links, &final_count_links);
+        extract_hypertexts(readHTMLFile(file_name), &final_texts, &final_count_texts);
+        //write to file
+        FILE *file = fopen(link_file, "w+");
+        for (int i = 0; i < final_count_links; i++)
+        {
+            fprintf(file, "%s\n", final_links[i]);
+        }
+        fclose(file);
+        file = fopen(text_file, "w+");
+        for (int i = 0; i < final_count_texts; i++)
+        {
+            fprintf(file, "%s\n", final_texts[i]);
+        }
+        fclose(file);
     }
-    fclose(file);
-    file = fopen(text_file, "w+");
-    for (int i = 0; i < final_count_text; i++)
-    {
-        fprintf(file, "%s\n", final_texts[i]);
+    else{
+        get_hostname(temp);
     }
-    fclose(file);
     return 0;
 }
