@@ -11,6 +11,7 @@
 // #define SERV_PORT 5550
 // #define SERV_IP "127.0.0.1"
 #define BUFF_SIZE 1024
+#define MES3 "Insert password:"
 
 int main(int argc, char *argv[]){
     if(argc != 3){
@@ -45,34 +46,43 @@ int main(int argc, char *argv[]){
 		fgets(buff, BUFF_SIZE, stdin);
 	
 		bytes_sent = sendto(client_sock, buff, strlen(buff), 0, (struct sockaddr *) &server_addr, sin_size);
-		if(bytes_sent < 0){
-			perror("Error: ");
-			close(client_sock);
-			return 0;
-		}
-
-		bytes_received = recvfrom(client_sock, buff, BUFF_SIZE - 1, 0, (struct sockaddr *) &server_addr, &sin_size);
+		bytes_received = recvfrom(client_sock, buff, BUFF_SIZE, 0, (struct sockaddr *) &server_addr, &sin_size);
 		if(bytes_received < 0){
 			perror("Error: ");
 			close(client_sock);
 			return 0;
 		}
-		buff[bytes_received] = '\0';
-		int count = 1;
-		while(strcmp(buff, "Insert password: " == 0) && count < 3){
+		buff[bytes_received]= '\0';
+		char *check = strdup(buff);
+		printf("%s ",check);
+		while(strcmp(check, MES3) == 0){
+			memset(buff,'\0',(strlen(buff)+1));
+			fgets(buff, BUFF_SIZE, stdin);
 			bytes_sent = sendto(client_sock, buff, strlen(buff), 0, (struct sockaddr *) &server_addr, sin_size);
-			if(bytes_sent < 0){
-				perror("Error: ");
-				close(client_sock);
-				return 0;
-			}
-
-			bytes_received = recvfrom(client_sock, buff, BUFF_SIZE - 1, 0, (struct sockaddr *) &server_addr, &sin_size);
+			bytes_received = recvfrom(client_sock, buff, BUFF_SIZE, 0, (struct sockaddr *) &server_addr, &sin_size);
 			if(bytes_received < 0){
 				perror("Error: ");
 				close(client_sock);
 				return 0;
 			}
+			buff[bytes_received]= '\0';
+			char *check1 = strdup(buff);
+			strcpy(check,check1);
+			printf("%s\n",check);
+		}
+		if(strcmp(check,"Login success!") == 0){
+			memset(buff,'\0',(strlen(buff)+1));
+			fgets(buff, BUFF_SIZE, stdin);
+			bytes_sent = sendto(client_sock, buff, strlen(buff), 0, (struct sockaddr *) &server_addr, sin_size);
+			bytes_received = recvfrom(client_sock, buff, BUFF_SIZE, 0, (struct sockaddr *) &server_addr, &sin_size);
+			if(bytes_received < 0){
+				perror("Error: ");
+				close(client_sock);
+				return 0;
+			}
+			buff[bytes_received]= '\0';
+			char *noti = strdup(buff);
+			printf("%s",noti);
 		}
 	}	
 	close(client_sock);
