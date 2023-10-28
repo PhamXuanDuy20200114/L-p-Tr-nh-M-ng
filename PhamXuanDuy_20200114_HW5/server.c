@@ -17,7 +17,7 @@
 #define MES2 "Account is blocked!"
 #define MES3 "Insert password:"
 #define MES4 "Login success!"
-#define MES5 "Log out!"
+#define MES6 "Error String!"
 char tenFile[100] = "./account.txt";
 int status;
 char *password;
@@ -85,6 +85,59 @@ int searchUserName(char name[]){
 	return 0;
 }
 
+char *SHA256Hashing(char *password)
+{
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, password, strlen(password));
+    SHA256_Final(hash, &sha256);
+    char *output = (char *)malloc(65);
+    int i = 0;
+    for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
+    {
+        sprintf(output + (i * 2), "%02x", hash[i]);
+    }
+    output[64] = '\0';
+    return output;
+}
+// return digit in string
+char *digitInString(char *str)
+{
+    int i = 0;
+    char *digit = (char *)malloc(BUFF_SIZE);
+    int j = 0;
+    while (i < strlen(str))
+    {
+        if (str[i] >= '0' && str[i] <= '9')
+        {
+            digit[j] = str[i];
+            j++;
+        }
+        i++;
+    }
+    digit[j] = '\0';
+    return digit;
+}
+// return character in string
+char *charInString(char *str)
+{
+    int i = 0;
+    char *character = (char *)malloc(BUFF_SIZE);
+    int j = 0;
+    while (i < strlen(str))
+    {
+        if ((str[i] >= 'a' && str[i] <= 'z') || (str[i] >= 'A' && str[i] <= 'Z'))
+        {
+            character[j] = str[i];
+            j++;
+        }
+        i++;
+    }
+    character[j] = '\0';
+    return character;
+}
+
 int main(int argc, char *argv[])
 {	
     if(argc != 2){
@@ -145,6 +198,27 @@ int main(int argc, char *argv[])
 				printf("%s",buff);
 				char *password = strdup(buff);
 				int count = 1;
+				if(strcmp(current->password,password) != 0){
+					while(strcmp(current->password,password) != 0 && count < 3 ){
+						bytes_sent = sendto(server_sock, MES3, strlen(MES3), 0, (struct sockaddr *) &client, sin_size);
+						bytes_received = recvfrom(server_sock, buff, BUFF_SIZE, 0, (struct sockaddr *) &client, &sin_size);
+						if (bytes_received < 0){
+							perror("\nError: ");
+							close(server_sock);
+							return 0;
+						}
+						buff[bytes_received-1] = '\0';
+						char *x = strdup(buff);
+						strcpy(password,x);
+						count++;
+					}
+					if( strcmp(current->password,password) != 0 && count == 3){
+						bytes_sent = sendto(server_sock, MES2, strlen(MES2), 0, (struct sockaddr *) &client, sin_size);
+						current->status = 0;
+						int i = remove(tenFile);
+						writeFile();
+					}
+				}
 				if(strcmp(current->password,password) == 0){
 					bytes_sent = sendto(server_sock, MES4, strlen(MES4), 0, (struct sockaddr *) &client, sin_size);
 					bytes_received = recvfrom(server_sock, buff, BUFF_SIZE, 0, (struct sockaddr *) &client, &sin_size);
@@ -154,42 +228,35 @@ int main(int argc, char *argv[])
 						return 0;
 					}
 					buff[bytes_received-1] = '\0';
-					char *checkUpdate = strdup(buff);
-					if(strcmp(checkUpdate,"bye")){
-						bytes_sent = sendto(server_sock, MES5, strlen(MES5), 0, (struct sockaddr *) &client, sin_size);	
+					char *checkPassword = strdup(buff);
+					if(strcmp(checkPassword,"bye") == 0){
+						char noti[] = "Goodbye ";
+						strcat(noti, current->userName);
+						bytes_sent = sendto(server_sock, noti, strlen(noti), 0, (struct sockaddr *) &client, sin_size);	
 					}
 					else{
 						int flag = 0;
-						for(int i = 0; checkUpdate[i] != '\0'; i++) {
-        					if (!(isalnum(checkUpdate[i]) || checkUpdate[i] == ' ')) {
+						for(int i = 0; checkPassword[i] != '\0'; i++) {
+        					if (!(isalnum(checkPassword[i]) || checkPassword[i] == ' ')) {
 								flag = 1;
             					break;
         					}
    						}
 						if(flag){
-							bytes_sent = sendto(server_sock, "Error String", strlen("Error String"), 0, (struct sockaddr *) &client, sin_size);	
+							bytes_sent = sendto(server_sock, MES6, strlen(MES6), 0, (struct sockaddr *) &client, sin_size);
 						}
-						
+						else{
+							strcpy(current->password, checkPassword);
+							int i= remove(tenFile);
+							writeFile();
+							char* hashString = SHA256Hashing(checkPassword);
+							char *digit = digitInString(hashString);
+							char *charString = charInString(hashString);
+							printf("%s",digit);
+							printf("%s",charString);
+							bytes_sent = sendto(server_sock, hashString, strlen(hashString), 0, (struct sockaddr *) &client, sin_size);	
+						}
 					}
-				}
-				while(strcmp(current->password,password) != 0 && count < 3 ){
-					bytes_sent = sendto(server_sock, MES3, strlen(MES3), 0, (struct sockaddr *) &client, sin_size);
-					bytes_received = recvfrom(server_sock, buff, BUFF_SIZE, 0, (struct sockaddr *) &client, &sin_size);
-					if (bytes_received < 0){
-						perror("\nError: ");
-						close(server_sock);
-						return 0;
-					}
-					buff[bytes_received-1] = '\0';
-					char *x = strdup(buff);
-					strcpy(password,x);
-					count++;
-				}
-				if( strcmp(current->password,password) != 0 && count == 3){
-					bytes_sent = sendto(server_sock, MES2, strlen(MES2), 0, (struct sockaddr *) &client, sin_size);
-					current->status = 0;
-					int i = remove(tenFile);
-					writeFile();
 				}
 			}
 		}else{

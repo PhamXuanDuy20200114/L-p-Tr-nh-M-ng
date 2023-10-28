@@ -54,7 +54,7 @@ int main(int argc, char *argv[]){
 		}
 		buff[bytes_received]= '\0';
 		char *check = strdup(buff);
-		printf("%s ",check);
+		printf("%s\n",check);
 		while(strcmp(check, MES3) == 0){
 			memset(buff,'\0',(strlen(buff)+1));
 			fgets(buff, BUFF_SIZE, stdin);
