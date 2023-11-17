@@ -12,17 +12,13 @@
 
 #define BUFF_SIZE 1024
 #define BACKLOG 5   /* Number of allowed connections */
-#define MES1 "Account is not active!"
-#define MES2 "Account is blocked!"
-#define MES3 "Insert password:"
-#define MES4 "Login success!"
-#define MES6 "Not found information!"
 #define FileName "./account.txt"
 
 struct User{
 	char userName[50];
 	char password[50];
 	int status;
+	int loginStatus;
 	struct User *next;
 };
 
@@ -38,7 +34,7 @@ void readFile(){
 
 	while(!feof(f)){
 		struct User *ptr = (struct User*) malloc(sizeof(struct User));
-		fscanf(f,"%s %s %d\n",ptr->userName,ptr->password,&ptr->status); 
+		fscanf(f,"%s %s %d %d\n",ptr->userName,ptr->password,&ptr->status, &ptr->loginStatus); 
 		ptr->next = head;
 		head = ptr;
 	}
@@ -50,7 +46,7 @@ void writeFile(){
 	f = fopen(FileName,"w");
 	struct User *ptr = head;
 	while(ptr != NULL){
-		fprintf(f,"%s %s %d\n",ptr->userName,ptr->password,ptr->status); 
+		fprintf(f,"%s %s %d %d\n",ptr->userName,ptr->password,ptr->status, ptr->loginStatus); 
 		ptr = ptr->next;
 	}
 	fclose(f);
@@ -60,7 +56,7 @@ void printList(){
 	struct User *ptr = head;
 	printf("\n[ ");
 	while(ptr != NULL){
-		printf("%s %s %d || ", ptr->userName, ptr->password, ptr->status);
+		printf("%s %s %d %d|| ", ptr->userName, ptr->password, ptr->status, ptr->loginStatus);
 		ptr = ptr->next;
 	}
 	printf(" ]\n");
@@ -91,8 +87,7 @@ void sendMes(int x, char *mes){
 
 int main(int argc, char *argv[])
 {
-	readFile();
-
+	char *check;
 	if(argc != 2){
         printf("Usage: %s \n", argv[0]);
         exit(1);
@@ -138,23 +133,84 @@ int main(int argc, char *argv[])
 		
 		pid_t pid = fork();
 
-        if (pid == 0) {  // Child process
+        if (pid == 0) {  
             close(listen_sock); 
+			
 			memset(recv_data,'\0',(strlen(recv_data)+1));
 			bytes_received = recv(conn_sock, recv_data, BUFF_SIZE-1, 0);
 			if(bytes_received <= 0){
 				printf("\nError!Cannot receive data from client!\n");
-				break;
+				return 0;
 			}
-			char *check = strdup(recv_data);
-			printf("%s", check);
-			if(searchUserName(check) == 0){
-				sendMes(conn_sock, "OK");
+			recv_data[bytes_received-1] = '\0';
+			check = strdup(recv_data);
+			readFile();
+			int search = searchUserName(check);
+			if(search == 1 && current->status == 1){
+				if(current->loginStatus == 0){
+					sendMes(conn_sock, "Insert password: ");
+	
+					memset(recv_data,'\0',(strlen(recv_data)+1));
+					bytes_received = recv(conn_sock, recv_data, BUFF_SIZE-1, 0);
+					if(bytes_received <= 0){
+						printf("\nError!Cannot receive data from client!\n");
+						return 0;
+					}
+					recv_data[bytes_received-1] = '\0';
+					check = strdup(recv_data);
+					int count = 1;
+					while(count < 3 && strcmp(check, current->password) != 0){
+						count ++;
+						sendMes(conn_sock, "Insert password: ");
+	
+						memset(recv_data,'\0',(strlen(recv_data)+1));
+						bytes_received = recv(conn_sock, recv_data, BUFF_SIZE-1, 0);
+						if(bytes_received <= 0){
+							printf("\nError!Cannot receive data from client!\n");
+							return 0;
+						}
+						recv_data[bytes_received-1] = '\0';
+						check = strdup(recv_data);
+					}
+					if(strcmp(check, current->password) != 0){
+						current->status = 0;
+						current->loginStatus = 0;
+						writeFile();
+						sendMes(conn_sock, "Account is Blocked!");
+					}
+					else{
+						current->loginStatus = 1;
+						remove(FileName);
+						writeFile();
+						printList();
+						sendMes(conn_sock, "Login success!");
+						memset(recv_data,'\0',(strlen(recv_data)+1));
+						bytes_received = recv(conn_sock, recv_data, BUFF_SIZE-1, 0);
+						if(bytes_received <= 0){
+							printf("\nError!Cannot receive data from client!\n");
+							return 0;
+						}
+						recv_data[bytes_received-1] = '\0';
+						check = strdup(recv_data);
+						if(strcmp(check, "bye") == 0){
+							current->loginStatus = 0;
+							remove(FileName);
+							writeFile();
+							sendMes(conn_sock, "Logout success!");
+						}else{
+							sendMes(conn_sock, "Login continue!");
+						}
+					}
+				}else{
+					sendMes(conn_sock, "Account is logged in elsewhere");
+				}
+				
+			}else if(search == 0){
+				sendMes(conn_sock, "Not found information!");
+			}else if(current->status == 0){
+				sendMes(conn_sock,"Account is Blocked!");
 			}
-			else{
-				sendMes(conn_sock, MES6);
-			}
-			
+
             exit(EXIT_SUCCESS);
         } else if (pid > 0) { 
             close(conn_sock);  

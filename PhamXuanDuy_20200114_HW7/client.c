@@ -21,6 +21,7 @@ void sendMes(int x, char *mes){
 }
 
 int main(int argc, char *argv[]){
+	char *check;
 	if(argc != 3){
         printf("Usage: %s \n", argv[0]);
         exit(1);
@@ -46,18 +47,52 @@ int main(int argc, char *argv[]){
 	}
 		
 	//Step 4: Communicate with server			
-	
 	printf("Insert Username: ");
 	memset(buff,'\0',(strlen(buff)+1));
 	fgets(buff, BUFF_SIZE, stdin);		
 	sendMes(client_sock, buff);
+
 	memset(buff,'\0',(strlen(buff)+1));
 	bytes_received = recv(client_sock, buff, BUFF_SIZE-1, 0);
 	if(bytes_received <= 0){
 		printf("\nError!Cannot receive data from sever!\n");
 		return 0;
 	}
-	printf("%s", buff);
+	buff[bytes_received] = '\0';
+	check = strdup(buff);
+	printf("%s",check);
+	while(strcmp(check, "Insert password: ") == 0){
+		memset(buff,'\0',(strlen(buff)+1));
+		fgets(buff, BUFF_SIZE, stdin);		
+		sendMes(client_sock, buff);
+		
+		memset(buff,'\0',(strlen(buff)+1));
+		bytes_received = recv(client_sock, buff, BUFF_SIZE-1, 0);
+		if(bytes_received <= 0){
+			printf("\nError!Cannot receive data from sever!\n");
+			return 0;
+		}
+		buff[bytes_received] = '\0';
+		check = strdup(buff);
+		printf("%s",check);
+	}
+
+	if(strcmp(check, "Login success!") == 0){
+		printf("\nWrite bye to logout!\n");
+		memset(buff,'\0',(strlen(buff)+1));
+		fgets(buff, BUFF_SIZE, stdin);		
+		sendMes(client_sock, buff);
+
+		memset(buff,'\0',(strlen(buff)+1));
+		bytes_received = recv(client_sock, buff, BUFF_SIZE-1, 0);
+		if(bytes_received <= 0){
+			printf("\nError!Cannot receive data from sever!\n");
+			return 0;
+		}
+		buff[bytes_received] = '\0';
+		check = strdup(buff);
+		printf("%s",check);
+	}
 	//Step 4: Close socket
 	close(client_sock);
 	return 0;
