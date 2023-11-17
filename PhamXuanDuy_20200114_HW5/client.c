@@ -11,7 +11,7 @@
 // #define SERV_PORT 5550
 // #define SERV_IP "127.0.0.1"
 #define BUFF_SIZE 1024
-#define MES3 "Insert password:"
+#define MES "Insert password:"
 
 int main(int argc, char *argv[]){
     if(argc != 3){

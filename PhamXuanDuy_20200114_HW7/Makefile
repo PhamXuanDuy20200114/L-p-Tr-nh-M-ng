@@ -1,0 +1,26 @@
+# Tên của tệp thực thi đầu ra
+TARGET_CLIENT = client
+TARGET_SERVER = server
+
+SOURCES_CLIENT = client.c
+SOURCES_SERVER = server.c
+
+CC = gcc
+
+
+CFLAGS = -Wall
+
+LDFLAGS_SERVER1 = -lssl
+LDFLAGS_SERVER2 = -lcrypto
+
+
+all:${TARGET_CLIENT} $(TARGET_SERVER)
+
+$(TARGET_CLIENT): $(SOURCES_CLIENT)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS_CLIENT)
+
+$(TARGET_SERVER): $(SOURCES_SERVER)
+	$(CC) $(CFLAGS) -o $@ $<  $(LDFLAGS_SERVER1) $(LDFLAGS_SERVER2)
+
+clean:
+	rm -f $(TARGET_CLIENT) $(TARGET_SERVER)
