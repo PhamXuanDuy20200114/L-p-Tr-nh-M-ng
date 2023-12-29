@@ -14,6 +14,7 @@
 #define BUFF_SIZE 1024
 #define max_clients 5   /* Number of allowed connections */
 #define FileName "account.txt"
+#define FILENAME "anhcopy.jpg"
 char recv_data[BUFF_SIZE];
 int bytes_received;
 
@@ -149,21 +150,38 @@ void *handleClient(void  *arg){
 				current->loginStatus = 1;
 				pthread_mutex_unlock(&accounts_mutex);
 				sendMes(conn_sock, "Login success!");
-				memset(recv_data,'\0',(strlen(recv_data)+1));
-				bytes_received = recv(conn_sock, recv_data, BUFF_SIZE-1, 0);
-				if(bytes_received <= 0){
-					printf("\nError!Cannot receive data from client!\n");
-					return;
-				}
-				recv_data[bytes_received-1] = '\0';
-				check = strdup(recv_data);
-				if(strcmp(check, "bye") == 0){
-					pthread_mutex_lock(&accounts_mutex);
-					current->loginStatus = 0;
-					pthread_mutex_unlock(&accounts_mutex);
-					sendMes(conn_sock, "Logout success!");
-				}else{
-					sendMes(conn_sock, "Login continue!");
+			
+				while(1){
+					//receives message from client
+					bytes_received = recv(conn_sock, recv_data, BUFF_SIZE-1, 0); //blocking
+					if (bytes_received <= 0){
+						printf("Connection closed\n");
+						break;
+					}
+					recv_data[bytes_received] = '\0';
+					printf("%s \n", recv_data);
+					char *check = strdup(recv_data);
+					if(strcmp(check, "Choice: 1") == 0){
+						sendMes(conn_sock, "Insert string: ");
+						bytes_received = recv(conn_sock, recv_data, BUFF_SIZE-1, 0); //blocking
+						if (bytes_received <= 0){
+								printf("Connection closed1\n");
+							break;
+						}
+						recv_data[bytes_received] = '\0';
+						printf("%s \n", recv_data);
+						sendMes(conn_sock, recv_data);			
+					}if(strcmp(check, "Choice: 2") == 0){
+						sendMes(conn_sock, "OK");
+						FILE *file;
+						file = fopen(FILENAME, "wb");
+						while ((bytes_received = recv(conn_sock, recv_data, BUFF_SIZE-1, 0)) > 0) {
+       						fwrite(recv_data, 1, bytes_received, file);
+    					}
+						fclose(file);
+					}else{
+						current->loginStatus = 0;
+					}
 				}
 			}
 		}else{

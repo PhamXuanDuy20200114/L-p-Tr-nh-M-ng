@@ -24,7 +24,7 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-	int client_sock;
+	int client_sock, bytes_received;
 	char buff[BUFF_SIZE];
 	struct sockaddr_in server_addr; /* server's address information */
 	int msg_len, bytes_sent, bytes_received;
