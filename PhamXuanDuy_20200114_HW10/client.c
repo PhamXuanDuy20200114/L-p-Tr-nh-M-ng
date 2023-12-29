@@ -62,8 +62,10 @@ void sendImg(int client_sock){
 		
 	buff[bytes_received] = '\0';
 	printf("%s\n", buff);
+	char *tenFile;
+	scanf("%s",tenFile);
 	FILE *file;
-	file = fopen("anh.jpg", "rb");
+	file = fopen(tenFile, "rb");
 	if (!file) {
         perror("Lỗi mở file ảnh");
        	return;

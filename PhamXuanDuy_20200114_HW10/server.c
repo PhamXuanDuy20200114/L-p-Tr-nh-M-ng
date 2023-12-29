@@ -172,7 +172,7 @@ void *handleClient(void  *arg){
 						printf("%s \n", recv_data);
 						sendMes(conn_sock, recv_data);			
 					}if(strcmp(check, "Choice: 2") == 0){
-						sendMes(conn_sock, "OK");
+						sendMes(conn_sock, "Nhập đương dẫn đến ảnh: ");
 						FILE *file;
 						file = fopen(FILENAME, "wb");
 						while ((bytes_received = recv(conn_sock, recv_data, BUFF_SIZE-1, 0)) > 0) {
